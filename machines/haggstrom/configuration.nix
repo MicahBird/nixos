@@ -59,6 +59,7 @@
     dbus.enable = true;
     openssh.enable = true;
     desktopManager.plasma6.enable = true;
+    nfs.server.enable = true;
   };
 
   services.flatpak.packages = [
@@ -76,6 +77,21 @@
     git
     librewolf-bin
   ];
+
+  networking = {
+    firewall.allowedTCPPorts = [ 2049 ]; # NFS
+    interfaces.eno1 = {
+      ipv4.addresses = [{
+        address = "192.168.1.119";
+        prefixLength = 24;
+      }];
+    };
+    defaultGateway = {
+      address = "192.168.1.1";
+      interface = "eno1";
+    };
+  };
+
 
   hardware = {
       bluetooth.enable = true;
