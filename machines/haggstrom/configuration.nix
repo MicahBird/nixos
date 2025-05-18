@@ -64,6 +64,7 @@
   services.flatpak.packages = [
     "com.heroicgameslauncher.hgl"
     "com.usebottles.bottles"
+    "com.github.tchx84.Flatseal"
   ];
   
   # List packages installed in system profile. To search, run:
@@ -73,6 +74,7 @@
     htop
     tmux
     git
+    librewolf-bin
   ];
 
   hardware = {
