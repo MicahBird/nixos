@@ -75,6 +75,7 @@
     htop
     tmux
     git
+    rsync
     librewolf-bin
   ];
 
