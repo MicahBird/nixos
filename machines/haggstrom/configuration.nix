@@ -16,7 +16,7 @@
   networking.hostName = "haggstrom"; # Define your hostname.
   boot.tmp.cleanOnBoot = true;
 
-  systemd.services.NetworkManager-wait-online.enable = true;
+  systemd.services.NetworkManager-wait-online.enable = false;
 
   # Enable networking
   networking.networkmanager.enable = true;
@@ -79,19 +79,19 @@
     librewolf-bin
   ];
 
-  networking = {
-    firewall.allowedTCPPorts = [ 2049 ]; # NFS
-    interfaces.enp3s0 = {
-      ipv4.addresses = [{
-        address = "192.168.1.119";
-        prefixLength = 24;
-      }];
-    };
-    defaultGateway = {
-      address = "192.168.1.1";
-      interface = "eno1";
-    };
-  };
+  # networking = {
+  #   firewall.allowedTCPPorts = [ 2049 ]; # NFS
+  #   interfaces.enp3s0 = {
+  #     ipv4.addresses = [{
+  #       address = "192.168.1.119";
+  #       prefixLength = 24;
+  #     }];
+  #   };
+  #   defaultGateway = {
+  #     address = "192.168.1.1";
+  #     interface = "enp3s0";
+  #   };
+  # };
 
 
   hardware = {
