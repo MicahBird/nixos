@@ -60,6 +60,10 @@
     openssh.enable = true;
     desktopManager.plasma6.enable = true;
     nfs.server.enable = true;
+    ollama = {
+      enable = true;
+      acceleration = "rocm";
+    };
   };
 
   services.flatpak.packages = [
@@ -76,27 +80,34 @@
     tmux
     git
     rsync
+    busybox
+    bluez-tools
     librewolf-bin
   ];
 
-  # networking = {
-  #   firewall.allowedTCPPorts = [ 2049 ]; # NFS
-  #   interfaces.enp3s0 = {
-  #     ipv4.addresses = [{
-  #       address = "192.168.1.119";
-  #       prefixLength = 24;
-  #     }];
-  #   };
-  #   defaultGateway = {
-  #     address = "192.168.1.1";
-  #     interface = "enp3s0";
-  #   };
-  # };
+  networking = {
+    firewall.allowedTCPPorts = [ 2049 ]; # NFS
+    interfaces.eno1 = {
+      useDHCP = false;
+      ipv4.addresses = [{
+        address = "192.168.1.119";
+        prefixLength = 24;
+      }];
+    };
+    defaultGateway = {
+      address = "192.168.1.1";
+      interface = "enp3s0";
+    };
+    nameservers = ["192.168.1.1"];
+  };
 
 
   hardware = {
-      bluetooth.enable = lib.mkForce false;
+      bluetooth.enable = true;
+      bluetooth.powerOnBoot = true;
+      bluetooth.package = pkgs.bluez;
       enableRedistributableFirmware = true;
+      enableAllFirmware = true;
     cpu.amd = {
       updateMicrocode = true;
     };
