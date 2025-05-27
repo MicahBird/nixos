@@ -63,7 +63,18 @@
     ollama = {
       enable = true;
       acceleration = "rocm";
+      host = "0.0.0.0";
+      openFirewall = true;
     };
+    displayManager.ly = {
+      enable = true;
+      # Later me, invesigate config options: https://codeberg.org/AnErrupTion/ly/src/branch/master/src/config/Config.zig
+      # settings = {
+      #};
+    };
+    logind.extraConfig = ''
+    HandlePowerKey=poweroff
+    '';
   };
 
   services.flatpak.packages = [
@@ -125,7 +136,7 @@
     steam = {
       updater.splash = "vendor";
       enable = true;
-      autoStart = true;
+      autoStart = false;
       user = "snowflake";
       desktopSession = "plasma";
     };
