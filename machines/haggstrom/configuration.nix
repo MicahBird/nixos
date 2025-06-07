@@ -11,9 +11,10 @@
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.supportedFilesystems = [ "ntfs" ];
+  boot.supportedFilesystems = [ "ntfs" "zfs" ];
 
   networking.hostName = "haggstrom"; # Define your hostname.
+  networking.hostId = "c8d8db12";
   boot.tmp.cleanOnBoot = true;
 
   systemd.services.NetworkManager-wait-online.enable = false;
@@ -45,14 +46,15 @@
     gid = 1000;
     };
   };
-
+  security.sudo.wheelNeedsPassword = false;	
   users.users.snowflake = {
     isNormalUser = true;
     description = "snowflake";
     group = "snowflake";
-    extraGroups = [ "networkmanager" "wheel" "video" "input" ];
+    extraGroups = [ "networkmanager" "wheel" "video" "input" "docker" ];
   };
 
+  virtualisation.docker.enable = true;
   
   services = {
     flatpak.enable = true;
@@ -82,9 +84,21 @@
     "com.usebottles.bottles"
     "com.github.tchx84.Flatseal"
   ];
+
+  # Flatpak overrides
+  services.flatpak.overrides = {
+    "com.usebottles.bottles".Context = {
+      # Allow Bottles to add Steam games
+      filesystems = [
+        "~/.local/share/Steam"
+        "~/.var/app/com.valvesoftware.Steam/data/Steam"
+      ];
+    };
+  };
   
   # List packages installed in system profile. To search, run:
   # $ nix search wget
+  programs.nix-ld.enable = true;
   environment.systemPackages = with pkgs; [
     vim
     htop
@@ -93,11 +107,15 @@
     rsync
     busybox
     bluez-tools
+    dua
+    gnome-disk-utility
     librewolf-bin
   ];
 
   networking = {
     firewall.allowedTCPPorts = [ 2049 ]; # NFS
+    # Causes a warning during build
+    # useNetworkd = true; # Fix losing static IP after suspend
     interfaces.eno1 = {
       useDHCP = false;
       ipv4.addresses = [{
@@ -145,5 +163,5 @@
     };
   };
 
-  system.stateVersion = "24.11";
+  system.stateVersion = "25.05";
 }
