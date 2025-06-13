@@ -54,11 +54,11 @@
     isNormalUser = true;
     description = "snowflake";
     group = "snowflake";
-    extraGroups = [ "networkmanager" "wheel" "render" "video" "input" "docker" ];
+    extraGroups = [ "networkmanager" "wheel" "render" "video" "audio" "input" "docker" ];
   };
 
   virtualisation = {
-      podman = {
+      docker = {
         enable = true;
       };
       oci-containers.containers = {

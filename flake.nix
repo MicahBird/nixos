@@ -5,14 +5,15 @@
     # NixOS official package source, using the nixos-24.11 branch here
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
+    chaotic.url = "github:chaotic-cx/nyx/nyxpkgs-unstable";
     jovian = {
-      url = "github:Jovian-Experiments/Jovian-NixOS/?ref=fc225a5a9fdddf8d212c03caaf3ae889ce34dca9";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
+      url = "github:Jovian-Experiments/Jovian-NixOS/?ref=8b0b76f13c875f1f31632fd5fbaee8a093421455";
+      inputs.nixpkgs.follows = "chaotic/jovian";
     };
     nix-flatpak.url = "github:gmodena/nix-flatpak/?ref=v0.6.0";
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nix-flatpak, jovian, ... }@inputs: {
+  outputs = { self, nixpkgs, nixpkgs-unstable, nix-flatpak, chaotic, jovian, ... }@inputs: {
     # Bricolage is a main workstation
     nixosConfigurations.bricolage = nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
@@ -32,6 +33,7 @@
       specialArgs = { inherit inputs; };
       modules = [
         inputs.jovian.nixosModules.default
+        chaotic.nixosModules.default
         nix-flatpak.nixosModules.nix-flatpak
         ./machines/haggstrom/configuration.nix
       ];
