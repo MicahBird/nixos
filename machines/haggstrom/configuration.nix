@@ -11,7 +11,10 @@
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.supportedFilesystems = [ "ntfs" "zfs" ];
+  # boot.supportedFilesystems = [ "ntfs" "zfs" ];
+  # Can't use zfs and latest kernel at the same time
+  boot.kernelPackages = pkgs.linuxPackages_cachyos;
+  chaotic.mesa-git.enable = true;
 
   networking.hostName = "haggstrom"; # Define your hostname.
   networking.hostId = "c8d8db12";
@@ -51,23 +54,45 @@
     isNormalUser = true;
     description = "snowflake";
     group = "snowflake";
-    extraGroups = [ "networkmanager" "wheel" "video" "input" "docker" ];
+    extraGroups = [ "networkmanager" "wheel" "render" "video" "input" "docker" ];
   };
 
-  virtualisation.docker.enable = true;
-  
+  virtualisation = {
+      podman = {
+        enable = true;
+      };
+      oci-containers.containers = {
+        ollama = {
+          image = "ollama/ollama:rocm";
+          ports = ["11434:11434"];
+	  devices = [
+	    "/dev/dri:/dev/dri"
+	    "/dev/kfd:/dev/kfd"
+	  ];
+	  volumes = [
+	    "/home/snowflake/.ollama:/root/.ollama"
+	  ];
+	  extraOptions = [
+	    "--pull=always"
+	  ];
+        };
+      };
+  };
+
   services = {
     flatpak.enable = true;
     dbus.enable = true;
     openssh.enable = true;
     desktopManager.plasma6.enable = true;
     nfs.server.enable = true;
-    ollama = {
-      enable = true;
-      acceleration = "rocm";
-      host = "0.0.0.0";
-      openFirewall = true;
-    };
+    # ollama = {
+    #   enable = true;
+    #   acceleration = "rocm";
+    #   host = "0.0.0.0";
+    #   openFirewall = true;
+    #   # results in environment variable "HSA_OVERRIDE_GFX_VERSION=10.3.0"
+    #   rocmOverrideGfx = "12.0.0";
+    # };
     displayManager.ly = {
       enable = true;
       # Later me, invesigate config options: https://codeberg.org/AnErrupTion/ly/src/branch/master/src/config/Config.zig
@@ -94,6 +119,13 @@
         "~/.var/app/com.valvesoftware.Steam/data/Steam"
       ];
     };
+    "com.heroicgameslauncher.hgl".Context = {
+      # Allow Bottles to add Steam games
+      filesystems = [
+        "~/.local/share/Steam"
+        "~/.var/app/com.valvesoftware.Steam/data/Steam"
+      ];
+    };
   };
   
   # List packages installed in system profile. To search, run:
@@ -109,6 +141,7 @@
     bluez-tools
     dua
     gnome-disk-utility
+    ollama
     librewolf-bin
   ];
 
