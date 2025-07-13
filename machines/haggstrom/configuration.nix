@@ -12,8 +12,10 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   # boot.supportedFilesystems = [ "ntfs" "zfs" ];
+  boot.supportedFilesystems = [ "nfs" ];
   # Can't use zfs and latest kernel at the same time
   boot.kernelPackages = pkgs.linuxPackages_cachyos;
+  # Stable mesa now properly supports the gpu
   chaotic.mesa-git.enable = true;
 
   networking.hostName = "haggstrom"; # Define your hostname.
@@ -102,6 +104,13 @@
     logind.extraConfig = ''
     HandlePowerKey=poweroff
     '';
+   # sunshine = {
+   #     enable = true;
+   #     autoStart = true;
+   #     capSysAdmin = true;
+   #     openFirewall = true;
+   #     
+   #   };
   };
 
   services.flatpak.packages = [
@@ -143,7 +152,18 @@
     gnome-disk-utility
     ollama
     librewolf-bin
+    lf
+    steam-rom-manager
+    # Emulators
+    ryubing
+
   ];
+
+  fileSystems."/mnt/roms" = {
+    device = "192.168.1.102:/mnt/aquarius/roms";
+    fsType = "nfs";
+    options = [ "x-systemd.automount" "noauto" ];
+  };
 
   networking = {
     firewall.allowedTCPPorts = [ 2049 ]; # NFS

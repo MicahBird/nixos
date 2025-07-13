@@ -7,7 +7,7 @@
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     chaotic.url = "github:chaotic-cx/nyx/nyxpkgs-unstable";
     jovian = {
-      url = "github:Jovian-Experiments/Jovian-NixOS/?ref=8b0b76f13c875f1f31632fd5fbaee8a093421455";
+      url = "github:Jovian-Experiments/Jovian-NixOS/?ref=1129c951dcc2a269a12cb74d64bd64e44e724ecb";
       inputs.nixpkgs.follows = "chaotic/jovian";
     };
     nix-flatpak.url = "github:gmodena/nix-flatpak/?ref=v0.6.0";
