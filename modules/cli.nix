@@ -25,6 +25,7 @@
     chezmoi
     tree
     usbutils
+    dnsutils
 
     # CLI Tools
     dua

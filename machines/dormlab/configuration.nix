@@ -2,12 +2,13 @@
 { config, pkgs, lib, ... }:
 let
   wan = "eno1";
-  lan = "enp6s0";
+  lan = "enp7s0";
 
-  dhcpLease = "infinite";
-  dnsMasqFormatDhcpHost = key: value: "${key},${value.ip}";
-  formatHostName = key: value: "${value.ip} ${value.name}";
-  dnsMasqFormatDhcpRange = x: "${x}.10,${x}.245,${dhcpLease}";
+  # TODO: Use these values and add hosts options similar to the above guide
+  # dhcpLease = "infinite";
+  # dnsMasqFormatDhcpHost = key: value: "${key},${value.ip}";
+  # formatHostName = key: value: "${value.ip} ${value.name}";
+  # dnsMasqFormatDhcpRange = x: "${x}.10,${x}.245,${dhcpLease}";
   mergeAttrSets = attrsets: builtins.foldl' lib.recursiveUpdate { } attrsets;
 
   dnsEnabledInterfaces = [ "br0" ];
@@ -15,41 +16,29 @@ let
   # staticIps = lib.mapAttrsToList dnsMasqFormatDhcpHost cfg.hosts;
 
   allowedUdpPorts = [
-    # https://serverfault.com/a/424226
     # DNS
     53
-    # DHCP
-    67
-    68
-    # NTP
-    123
-    # Wireguard
-    666
   ];
   allowedTcpPorts = [
-    # https://serverfault.com/a/424226
-    # SSH
-    22
+    # # SSH
+    # 22
     # DNS
     53
-    # HTTP(S)
-    80
-    443
-    110
-    # Email (pop3, pop3s)
-    995
-    114
-    # Email (imap, imaps)
-    993
-    # Email (SMTP Submission RFC 6409)
-    587
-    # Git
-    2222
   ];
   # inherit (lib) mapAttrs' genAttrs nameValuePair mkOption types mkIf mkEnableOption;
 
   # Router settings
   routerIp = "172.16.0.1";
+
+  # ZFS Latest compatible kernel: https://wiki.nixos.org/wiki/ZFS
+  zfsCompatibleKernelPackages = lib.filterAttrs (name: kernelPackages:
+    (builtins.match "linux_[0-9]+_[0-9]+" name) != null
+    && (builtins.tryEval kernelPackages).success
+    && (!kernelPackages.${config.boot.zfs.package.kernelModuleAttribute}.meta.broken))
+    pkgs.linuxKernel.packages;
+  latestKernelPackage = lib.last
+    (lib.sort (a: b: (lib.versionOlder a.kernel.version b.kernel.version))
+      (builtins.attrValues zfsCompatibleKernelPackages));
 in {
 
   imports = [ # Include the results of the hardware scan.
@@ -59,25 +48,43 @@ in {
   nixpkgs.config.allowUnfree = true;
 
   networking.hostName = "dormlab"; # Define your hostname.
+  networking.hostId = "c8d8db12";
   boot.tmp.cleanOnBoot = true;
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.supportedFilesystems = [ "nfs" "zfs" ];
+  boot.initrd.kernelModules = [ "amdgpu" ];
 
-  # Use latest kernel
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  # ZFS
+  boot.zfs.forceImportRoot = false;
+  boot.zfs.devNodes = "/dev/disk/by-id";
+  services.zfs.autoScrub.enable = true;
+  # Use latest kernel that is compatible with ZFS
+  boot.kernelPackages = latestKernelPackage;
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.groups = { snowflake = { gid = 1000; }; };
   security.sudo.wheelNeedsPassword = false;
   users.users.snowflake = {
     isNormalUser = true;
+    uid = 1000;
     description = "snowflake";
     group = "snowflake";
     extraGroups =
       [ "networkmanager" "wheel" "render" "video" "audio" "input" "docker" ];
+  };
+
+  # User for gaming
+  users.groups = { gamer = { gid = 1001; }; };
+  users.users.gamer = {
+    isNormalUser = true;
+    uid = 1001;
+    description = "gamer";
+    group = "gamer";
+    extraGroups = [ "networkmanager" "render" "video" "audio" "input" ];
   };
 
   # Set your time zone.
@@ -98,7 +105,13 @@ in {
     LC_TIME = "en_US.UTF-8";
   };
 
-  services = { openssh.enable = true; };
+  services = {
+    openssh.enable = true;
+    rpcbind.enable = true; # K3s - NFS
+  };
+
+  # Note that NFS shares on ZFS are created differently: https://nixos.wiki/wiki/ZFS#NFS_shares
+  services.nfs.server.enable = true;
 
   hardware = {
     bluetooth.enable = true;
@@ -113,7 +126,18 @@ in {
     };
   };
 
-  environment.systemPackages = with pkgs; [ ollama ];
+  environment.systemPackages = with pkgs; [
+    ollama
+    nfs-utils
+    smartmontools
+    gnome-disk-utility
+    librewolf-bin
+    k9s
+    # Gaming
+    steam-rom-manager
+    # Emulators
+    ryubing
+  ];
 
   # Router
   boot = {
@@ -127,12 +151,10 @@ in {
   };
 
   networking.useDHCP = false;
-  # request an IP from ISP
-  networking.interfaces."${wan}".useDHCP = true;
 
   networking.firewall = {
-    enable = false;
-    trustedInterfaces = [ "br0" ];
+    enable = true;
+    trustedInterfaces = [ "br0" "${lan}" "tailscale0" ];
     # Flush config on reload
     extraStopCommands = ''
       iptables -F
@@ -140,7 +162,19 @@ in {
       ip6tables -F
       ip6tables -t nat -F || true
     '';
+
+    # For an example of how to port forward spesific network traffic, reference: https://github.com/skogsbrus/os/blob/master/sys/router.nix
+
+    interfaces = {
+      "${wan}" = {
+        allowedTCPPorts = allowedTcpPorts;
+        allowedUDPPorts = allowedUdpPorts;
+      };
+    };
   };
+
+  # Prevent sshd from opening port 22 (circumventing the firewall)
+  services.openssh.openFirewall = false;
 
   networking.nat = {
     enable = true;
@@ -158,9 +192,12 @@ in {
   };
 
   networking.interfaces = {
+    # WAN - request an IP from ISP
+    "${wan}" = { useDHCP = true; };
+
     br0 = {
       ipv4.addresses = [{
-        address = "172.16.0.1";
+        address = routerIp;
         prefixLength = 24;
       }];
     };
@@ -177,9 +214,13 @@ in {
         bogus-priv = true;
         no-resolv = true;
 
-        # upstream name servers
-        server = [ "9.9.9.9" "1.1.1.1" ];
-        expand-hosts = true;
+        dhcp-option = "6,${routerIp}";
+        port = "0";
+        except-interface = "lo";
+        # Use blocky for DNS
+        # # upstream name servers
+        # server = [ "9.9.9.9" "1.1.1.1" ];
+        # expand-hosts = true;
 
         # # local domains
         # domain = "home";
@@ -193,6 +234,11 @@ in {
     ];
   };
 
+  # # Define host names to make dnsmasq resolve them, e.g. http://router.home
+  # networking.extraHosts =
+  #   lib.concatStringsSep "\n" (lib.mapAttrsToList formatHostName cfg.hosts);
+
+  # Tailscale
   services.tailscale = {
     enable = true;
     disableTaildrop = true;
@@ -204,82 +250,124 @@ in {
     ];
   };
 
-  # # Define host names to make dnsmasq resolve them, e.g. http://router.home
-  # networking.extraHosts =
-  #   lib.concatStringsSep "\n" (lib.mapAttrsToList formatHostName cfg.hosts);
+  # K3s - https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/networking/cluster/k3s/docs/USAGE.md
+  # When changing any of the options, reset the cluster: https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/networking/cluster/k3s/docs/CLUSTER_UPKEEP.md
+  services.k3s.package = pkgs.k3s_1_33; # Lock version
+  services.k3s.enable = true;
+  services.k3s.role = "server";
+  services.k3s.clusterInit = true;
+  services.k3s.tokenFile = "/home/snowflake/k3sToken.txt";
+  services.k3s.extraFlags = toString [
+    ''--write-kubeconfig-mode "0644"''
+    "--disable servicelb"
+    # "--disable local-storage" # Needed for ArgoCD
+    "--disable traefik"
+    "--flannel-iface=br0"
+    "--flannel-external-ip=false"
+    "--node-ip=${routerIp}"
+    "--advertise-address=${routerIp}"
+    # "--debug" # Optionally add additional args to k3s
+  ];
 
-  # Old nixos-router config
-  # # 1. Enable the router module.
-  # router.enable = true;
-  #
-  # # 2. Configure the network interfaces.
-  # router.interfaces = {
-  #   # The WAN
-  #   eno1 = {
-  #     # # This interface will get its IP configuration from an upstream DHCP server (e.g., your ISP).
-  #     # dhcpcd.enable = true;
-  #     # Enable IPv4 packet forwarding on this interface.
-  #     ipv4.enableForwarding = true;
-  #   };
-  #
-  #   # The LAN 
-  #   enp6s0 = {
-  #     ipv4 = {
-  #       # Enable IPv4 packet forwarding on this interface.
-  #       enableForwarding = true;
-  #
-  #       # Configure the static IP address for the router on the LAN.
-  #       addresses = [
-  #         {
-  #           address = "172.16.0.1";
-  #           prefixLength = 24; # Corresponds to the 172.16.0.0/24 subnet.
-  #         }
-  #       ];
-  #
-  #       # Enable the Kea DHCP server to assign IP addresses to clients on the LAN.
-  #       # It automatically uses the subnet defined in `addresses` above.
-  #       kea.enable = true;
-  #     };
-  #   };
-  #
-  #   # Wi-Fi AP
-  #   wlp4s0.hostapd.enable = true;
+  # Ollama
+  virtualisation = {
+    oci-containers.containers = {
+      ollama = {
+        image = "ollama/ollama:rocm";
+        ports = [ "11434:11434" ];
+        devices = [ "/dev/dri:/dev/dri" "/dev/kfd:/dev/kfd" ];
+        volumes = [ "/home/snowflake/.ollama:/root/.ollama" ];
+        extraOptions = [ "--pull=always" ];
+      };
+    };
+  };
+
+  # DNS - TODO: Blocking not working, no clue why
+  networking.nameservers = [ "9.9.9.9" ]; # Testing
+  services.blocky = {
+    enable = true;
+    settings = {
+      ports.dns = 53; # Port for incoming DNS Queries.
+      upstreams.groups.default = [
+        "9.9.9.9"
+        "149.112.112.112" # Quad 9
+        # "138.67.1.3"
+        # "138.67.1.2" # Mines DNS
+      ];
+      # # For initially solving DoH/DoT Requests when no system Resolver is available.
+      # bootstrapDns = {
+      #   upstream = "https://one.one.one.one/dns-query";
+      #   ips = [ "9.9.9.9" "149.112.112.112" ]; # Quad 9
+      # };
+      #Enable Blocking of certain domains.
+      blocking = {
+        denylists = {
+          #Adblocking
+          ads = [
+            "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts" # Pi-Hole Default block list
+          ];
+          #Another filter for blocking adult sites
+          adult = [ "https://blocklistproject.github.io/Lists/porn.txt" ];
+          #You can add additional categories
+        };
+        #Configure what block categories are used
+        clientGroupsBlock = { "172.16.0.0/24" = [ "ads" "adult" ]; };
+        blockType = "zeroIP";
+      };
+      log.level = "error";
+    };
+  };
+
+  # GAMING ZONE!! 
+  services.dbus.enable = true;
+  services.desktopManager.plasma6.enable = true;
+
+  security.rtkit.enable = true; # Enable RealtimeKit for audio purposes
+
+  services.pipewire = {
+    enable = true;
+    alsa.enable = true;
+    alsa.support32Bit = true;
+    pulse.enable = true;
+  };
+
+  # Progams 
+  programs = {
+    gamescope = {
+      enable = true;
+      capSysNice = true;
+    };
+    steam = {
+      enable = true;
+      gamescopeSession.enable = true;
+    };
+  };
+
+  # Sunshine for remote gaming
+  services.sunshine = {
+    enable = true;
+    autoStart = true;
+    capSysAdmin = true;
+    openFirewall = false;
+  };
+
+  services.displayManager.sddm = {
+    enable = true;
+    wayland.enable = true;
+    autoLogin.enable = true;
+    autoLogin.user = "gamer";
+  };
+
+  # Auto TTY Login: https://discourse.nixos.org/t/autologin-for-single-tty/49427
+  # systemd.services."getty@tty1" = {
+  #   overrideStrategy = "asDropin";
+  #   serviceConfig.ExecStart = [
+  #     ""
+  #     "@${pkgs.util-linux}/sbin/agetty agetty --login-program ${pkgs.tmux}/bin/tmux new-session --autologin gamer --noclear --keep-baud %I 115200,38400,9600 $TERM"
+  #   ];
   # };
   #
-  # # 3. Configure firewall rules in the default network namespace.
-  # router.networkNamespaces.default = {
-  #   nftables.textRules = ''
-  #     # This ruleset provides basic firewalling and NAT (Network Address Translation).
-  #
-  #     # Table for filtering forwarded traffic.
-  #     table inet filter {
-  #       chain forward {
-  #         type filter hook forward priority 0;
-  #         # By default, drop all forwarded packets.
-  #         policy drop;
-  #
-  #         # Allow traffic that is part of an established or related connection.
-  #         # This is crucial for return traffic from the WAN to the LAN.
-  #         ct state established,related accept;
-  #
-  #         # Allow new connections originating from the LAN and going to the WAN.
-  #         iifname "${lan}" oifname "${wan}" accept;
-  #       }
-  #     }
-  #
-  #     # Table for Network Address Translation (NAT).
-  #     table ip nat {
-  #       chain postrouting {
-  #         type nat hook postrouting priority 100;
-  #
-  #         # Perform masquerading (a form of NAT) for traffic from our LAN
-  #         # subnet going out the WAN interface. This makes all LAN traffic
-  #         # appear to come from the router's single public IP address.
-  #         ip saddr 172.16.0.0/24 oifname "${wan}" masquerade;
-  #       }
-  #     }
-  #   '';
-  # };
+  # services.displayManager.ly = { enable = true; };
 
   system.stateVersion = "25.05";
 }
