@@ -77,7 +77,7 @@ in {
       [ "networkmanager" "wheel" "render" "video" "audio" "input" "docker" ];
   };
 
-  # User for gaming
+  # User for gaming (no sudo privileges)
   users.groups = { gamer = { gid = 1001; }; };
   users.users.gamer = {
     isNormalUser = true;
@@ -133,6 +133,9 @@ in {
     gnome-disk-utility
     librewolf-bin
     k9s
+    distrobox
+    w3m
+    nvtopPackages.amd
     # Gaming
     steam-rom-manager
     # Emulators
@@ -194,6 +197,7 @@ in {
   networking.interfaces = {
     # WAN - request an IP from ISP
     "${wan}" = { useDHCP = true; };
+    # enp2s0f0u1 = { useDHCP = true; };
 
     br0 = {
       ipv4.addresses = [{
@@ -269,9 +273,13 @@ in {
     # "--debug" # Optionally add additional args to k3s
   ];
 
-  # Ollama
   virtualisation = {
+    podman = {
+      enable = true;
+      dockerCompat = true;
+    };
     oci-containers.containers = {
+      # Ollama
       ollama = {
         image = "ollama/ollama:rocm";
         ports = [ "11434:11434" ];
@@ -282,17 +290,102 @@ in {
     };
   };
 
+  services.frp = {
+    enable = true;
+    role = "client";
+    settings = {
+      auth.method = "token";
+      # Workaround since secrets must be in plain text for frp
+      # NOTE: When using builtins.readFile you MUST build a nix generation WITHOUT builtins.readFile FIRST, and then subsequent builds will work.
+      serverAddr = lib.strings.trim
+        (builtins.readFile config.age.secrets.frp-serverAddr.path);
+      auth.token =
+        lib.strings.trim (builtins.readFile config.age.secrets.frp-token.path);
+      # Slight bruh moment
+      serverPort = lib.strings.toInt (lib.strings.trim
+        (builtins.readFile config.age.secrets.frp-serverPort.path));
+      transport.tls.enable = true;
+      proxies = [
+        {
+          name = "ollama";
+          type = "tcp";
+          localIP = "${routerIp}";
+          localPort = 11434;
+          remotePort = 5000;
+        }
+        {
+          name = "nixos-ssh";
+          type = "tcp";
+          localIP = "${routerIp}";
+          localPort = 22;
+          remotePort = 5001;
+        }
+        # Gaming ports
+        {
+          name = "sunshine-47984";
+          type = "tcp";
+          localIP = "${routerIp}";
+          localPort = 47984;
+          remotePort = 47984;
+        }
+        {
+          name = "sunshine-47989";
+          type = "tcp";
+          localIP = "${routerIp}";
+          localPort = 47989;
+          remotePort = 47989;
+        }
+        {
+          name = "sunshine-47990";
+          type = "tcp";
+          localIP = "${routerIp}";
+          localPort = 47990;
+          remotePort = 47990;
+        }
+        {
+          name = "sunshine-48010";
+          type = "tcp";
+          localIP = "${routerIp}";
+          localPort = 48010;
+          remotePort = 48010;
+        }
+        {
+          name = "sunshine-47998-48000";
+          type = "udp";
+          localIP = "${routerIp}";
+          localPort = 47998;
+          remotePort = 47998;
+        }
+        {
+          name = "sunshine-47999-48000";
+          type = "udp";
+          localIP = "${routerIp}";
+          localPort = 47999;
+          remotePort = 47999;
+        }
+        {
+          name = "sunshine-48000-48000";
+          type = "udp";
+          localIP = "${routerIp}";
+          localPort = 48000;
+          remotePort = 48000;
+        }
+      ];
+    };
+  };
+
   # DNS - TODO: Blocking not working, no clue why
-  networking.nameservers = [ "9.9.9.9" ]; # Testing
+  networking.nameservers = [ "138.67.1.2" "138.67.1.3" ]; # Testing
+  # networking.nameservers = [ "9.9.9.9" ]; # Testing
   services.blocky = {
     enable = true;
     settings = {
       ports.dns = 53; # Port for incoming DNS Queries.
       upstreams.groups.default = [
-        "9.9.9.9"
-        "149.112.112.112" # Quad 9
-        # "138.67.1.3"
-        # "138.67.1.2" # Mines DNS
+        # "9.9.9.9"
+        # "149.112.112.112" # Quad 9
+        "138.67.1.3"
+        "138.67.1.2" # Mines DNS
       ];
       # # For initially solving DoH/DoT Requests when no system Resolver is available.
       # bootstrapDns = {
@@ -319,6 +412,10 @@ in {
   };
 
   # GAMING ZONE!! 
+
+  # Virutal Display - https://discourse.nixos.org/t/nixos-sunshine-setup-using-a-virtual-screen/64857/2
+  boot.kernelParams = [ "video=DP-2:1920x1080R@60D" ];
+
   services.dbus.enable = true;
   services.desktopManager.plasma6.enable = true;
 
@@ -348,14 +445,42 @@ in {
     enable = true;
     autoStart = true;
     capSysAdmin = true;
-    openFirewall = false;
+    openFirewall = true;
   };
 
   services.displayManager.sddm = {
     enable = true;
     wayland.enable = true;
-    autoLogin.enable = true;
-    autoLogin.user = "gamer";
+    # autoLogin.enable = true;
+    # autoLogin.user = "gamer";
+  };
+
+  services.displayManager.autoLogin.user = "gamer";
+  services.displayManager.autoLogin.enable = true;
+
+  services.flatpak.enable = true;
+  services.flatpak.packages = [
+    "com.heroicgameslauncher.hgl"
+    "com.usebottles.bottles"
+    "com.github.tchx84.Flatseal"
+  ];
+
+  # Flatpak overrides
+  services.flatpak.overrides = {
+    "com.usebottles.bottles".Context = {
+      # Allow Bottles to add Steam games
+      filesystems = [
+        "~/.local/share/Steam"
+        "~/.var/app/com.valvesoftware.Steam/data/Steam"
+      ];
+    };
+    "com.heroicgameslauncher.hgl".Context = {
+      # Allow Bottles to add Steam games
+      filesystems = [
+        "~/.local/share/Steam"
+        "~/.var/app/com.valvesoftware.Steam/data/Steam"
+      ];
+    };
   };
 
   # Auto TTY Login: https://discourse.nixos.org/t/autologin-for-single-tty/49427

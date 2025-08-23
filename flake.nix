@@ -12,6 +12,7 @@
       inputs.nixpkgs.follows = "chaotic/jovian";
     };
     nix-flatpak.url = "github:gmodena/nix-flatpak/?ref=v0.6.0";
+    agenix.url = "github:ryantm/agenix";
     # Dormlab components
 
     # nixos-router = {
@@ -19,8 +20,8 @@
     # };
   };
 
-  outputs = { self, nixpkgs, nixpkgs-unstable, nix-flatpak, chaotic, jovian, ...
-    }@inputs:
+  outputs = { self, nixpkgs, nixpkgs-unstable, nix-flatpak, chaotic, jovian
+    , agenix, ... }@inputs:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -63,8 +64,26 @@
         };
         modules = [
           # inputs.nixos-router.nixosModules.default
+          #
+          # {
+          #   # import all agenix secrets
+          #   age.secrets = let secrets = import ./secrets/secrets.nix;
+          #   in builtins.mapAttrs (name: attrs: {
+          #     file = ./secrets/${name};
+          #     owner = attrs.owner or "root";
+          #     group = attrs.group or "root";
+          #     mode = attrs.mode or "0400";
+          #   }) secrets;
+          # }
+          {
+            age.secrets.frp-token.file = ./secrets/frp-token.age;
+            age.secrets.frp-serverAddr.file = ./secrets/frp-serverAddr.age;
+            age.secrets.frp-serverPort.file = ./secrets/frp-serverPort.age;
+          }
+          nix-flatpak.nixosModules.nix-flatpak
           ./modules/cli.nix
           ./machines/dormlab/configuration.nix
+          agenix.nixosModules.default
         ];
       };
     };
