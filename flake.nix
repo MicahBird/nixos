@@ -39,7 +39,7 @@
           ./machines/bricolage/configuration.nix
         ];
       };
-      # Haggstrom is a gaming spesific config
+      # Haggstrom is a gaming specific config
       nixosConfigurations.haggstrom =
         nixpkgs-unstable.lib.nixosSystem { # NOTE: MUST USE UNSTABLE
           inherit system;

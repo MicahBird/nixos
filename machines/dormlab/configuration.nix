@@ -73,9 +73,14 @@ in {
     uid = 1000;
     description = "snowflake";
     group = "snowflake";
+    shell = pkgs.zsh;
     extraGroups =
-      [ "networkmanager" "wheel" "render" "video" "audio" "input" "docker" ];
+      [ "networkmanager" "wheel" "render" "video" "audio" "input" "docker" "dialout" ];
   };
+
+  programs.zsh.enable = true;
+  programs.zsh.autosuggestions.enable = true;
+
 
   # User for gaming (no sudo privileges)
   users.groups = { gamer = { gid = 1001; }; };
@@ -84,7 +89,7 @@ in {
     uid = 1001;
     description = "gamer";
     group = "gamer";
-    extraGroups = [ "networkmanager" "render" "video" "audio" "input" ];
+    extraGroups = [ "networkmanager" "render" "video" "audio" "input" "dialout" ];
   };
 
   # Set your time zone.
@@ -132,10 +137,13 @@ in {
     smartmontools
     gnome-disk-utility
     librewolf-bin
+    ungoogled-chromium
     k9s
     distrobox
     w3m
     nvtopPackages.amd
+    distrobox
+    jetbrains.clion
     # Gaming
     steam-rom-manager
     # Emulators
@@ -253,6 +261,16 @@ in {
       "--accept-dns=false"
     ];
   };
+
+  # Testing Invidious
+  services.invidious.enable = true;
+  # services.invidious.settings = {
+  #   default_user_preferences = {
+  #     quality = "dash";
+  #     quality_dash = "auto";
+  #   };
+  # };
+  services.invidious.sig-helper.enable = true;
 
   # K3s - https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/networking/cluster/k3s/docs/USAGE.md
   # When changing any of the options, reset the cluster: https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/networking/cluster/k3s/docs/CLUSTER_UPKEEP.md
@@ -455,7 +473,7 @@ in {
     # autoLogin.user = "gamer";
   };
 
-  services.displayManager.autoLogin.user = "gamer";
+  services.displayManager.autoLogin.user = "snowflake";
   services.displayManager.autoLogin.enable = true;
 
   services.flatpak.enable = true;

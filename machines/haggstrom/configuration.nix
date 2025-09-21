@@ -1,10 +1,9 @@
 { config, pkgs, lib, ... }:
 
 {
-  imports =
-    [ # Include the results of the hardware scan.
-      /etc/nixos/hardware-configuration.nix
-    ];
+  imports = [ # Include the results of the hardware scan.
+    /etc/nixos/hardware-configuration.nix
+  ];
 
   nixpkgs.config.allowUnfree = true;
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
@@ -16,7 +15,7 @@
   # Can't use zfs and latest kernel at the same time
   boot.kernelPackages = pkgs.linuxPackages_cachyos;
   # Stable mesa now properly supports the gpu
-  chaotic.mesa-git.enable = true;
+  chaotic.mesa-git.enable = false;
 
   networking.hostName = "haggstrom"; # Define your hostname.
   networking.hostId = "c8d8db12";
@@ -46,39 +45,27 @@
   };
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.groups = {
-  snowflake = {
-    gid = 1000;
-    };
-  };
-  security.sudo.wheelNeedsPassword = false;	
+  users.groups = { snowflake = { gid = 1000; }; };
+  security.sudo.wheelNeedsPassword = false;
   users.users.snowflake = {
     isNormalUser = true;
     description = "snowflake";
     group = "snowflake";
-    extraGroups = [ "networkmanager" "wheel" "render" "video" "audio" "input" "docker" ];
+    extraGroups =
+      [ "networkmanager" "wheel" "render" "video" "audio" "input" "docker" ];
   };
 
   virtualisation = {
-      docker = {
-        enable = true;
+    docker = { enable = true; };
+    oci-containers.containers = {
+      ollama = {
+        image = "ollama/ollama:rocm";
+        ports = [ "11434:11434" ];
+        devices = [ "/dev/dri:/dev/dri" "/dev/kfd:/dev/kfd" ];
+        volumes = [ "/home/snowflake/.ollama:/root/.ollama" ];
+        extraOptions = [ "--pull=always" ];
       };
-      oci-containers.containers = {
-        ollama = {
-          image = "ollama/ollama:rocm";
-          ports = ["11434:11434"];
-	  devices = [
-	    "/dev/dri:/dev/dri"
-	    "/dev/kfd:/dev/kfd"
-	  ];
-	  volumes = [
-	    "/home/snowflake/.ollama:/root/.ollama"
-	  ];
-	  extraOptions = [
-	    "--pull=always"
-	  ];
-        };
-      };
+    };
   };
 
   services = {
@@ -102,15 +89,15 @@
       #};
     };
     logind.extraConfig = ''
-    HandlePowerKey=poweroff
+      HandlePowerKey=poweroff
     '';
-   # sunshine = {
-   #     enable = true;
-   #     autoStart = true;
-   #     capSysAdmin = true;
-   #     openFirewall = true;
-   #     
-   #   };
+    # sunshine = {
+    #     enable = true;
+    #     autoStart = true;
+    #     capSysAdmin = true;
+    #     openFirewall = true;
+    #     
+    #   };
   };
 
   services.flatpak.packages = [
@@ -136,7 +123,7 @@
       ];
     };
   };
-  
+
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   programs.nix-ld.enable = true;
@@ -180,19 +167,16 @@
       address = "192.168.1.1";
       interface = "enp3s0";
     };
-    nameservers = ["192.168.1.1"];
+    nameservers = [ "192.168.1.1" ];
   };
 
-
   hardware = {
-      bluetooth.enable = true;
-      bluetooth.powerOnBoot = true;
-      bluetooth.package = pkgs.bluez;
-      enableRedistributableFirmware = true;
-      enableAllFirmware = true;
-    cpu.amd = {
-      updateMicrocode = true;
-    };
+    bluetooth.enable = true;
+    bluetooth.powerOnBoot = true;
+    bluetooth.package = pkgs.bluez;
+    enableRedistributableFirmware = true;
+    enableAllFirmware = true;
+    cpu.amd = { updateMicrocode = true; };
     graphics = {
       enable = true;
       enable32Bit = true;
@@ -211,9 +195,7 @@
       user = "snowflake";
       desktopSession = "plasma";
     };
-    steamos = {
-      useSteamOSConfig = true;
-    };
+    steamos = { useSteamOSConfig = true; };
   };
 
   system.stateVersion = "25.05";
