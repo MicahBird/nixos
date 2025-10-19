@@ -11,7 +11,7 @@ let
   # dnsMasqFormatDhcpRange = x: "${x}.10,${x}.245,${dhcpLease}";
   mergeAttrSets = attrsets: builtins.foldl' lib.recursiveUpdate { } attrsets;
 
-  dnsEnabledInterfaces = [ "br0" ];
+  dnsEnabledInterfaces = [ "br0" "wlp5s0" ];
   # dhcpEnabledIpSubnets = (map dnsMasqFormatDhcpRange [cfg.privateSubnet cfg.guestSubnet cfg.workSubnet ]);
   # staticIps = lib.mapAttrsToList dnsMasqFormatDhcpHost cfg.hosts;
 
@@ -165,7 +165,7 @@ in {
 
   networking.firewall = {
     enable = true;
-    trustedInterfaces = [ "br0" "${lan}" "tailscale0" ];
+    trustedInterfaces = [ "br0" "${lan}" "tailscale0" "wlp5s0" ];
     # Flush config on reload
     extraStopCommands = ''
       iptables -F
@@ -189,7 +189,7 @@ in {
 
   networking.nat = {
     enable = true;
-    internalInterfaces = [ "br0" ];
+    internalInterfaces = [ "br0" "wlp5s0" ];
     externalInterface = "${wan}";
   };
 
@@ -197,7 +197,9 @@ in {
     br0 = {
       interfaces = [
         "${lan}"
-        # wireless interface added by hostapd
+        # "wlp5s0"
+        # Uncomment the above line to use the Wifi interface with hostapd
+        
       ];
     };
   };
@@ -246,6 +248,42 @@ in {
     ];
   };
 
+    
+    # Working WIFI
+    # services.hostapd = {
+    #   enable = true;
+    #   radios = {
+    #     wlp5s0 = {
+    #       channel = 6;
+    #       countryCode = "US";
+    #       settings = {
+    #         logger_syslog = 127;
+    #         logger_syslog_level = 2;
+    #         logger_stdout = 127;
+    #         logger_stdout_level = 2;
+    #       };
+    #       networks = {
+    #         wlp5s0 = {
+    #           ssid = "icecreamiscream";
+    #           authentication = {
+    #             wpaPassword = "bruh12345";
+    #             # wpaPasswordFile = config.age.secrets.icecream_pw.path;
+    #             mode = "wpa2-sha1";
+    #           };
+    #           logLevel = 2;
+    #           # apIsolate = true;
+    #         };
+    #       };
+    #       settings = {
+    #         # Country code and 80211d are set manually to avoid 80211h when
+    #         # countryCode is set (NIC seems to freak out when doing DFS)
+    #         country_code = "US";
+    #         ieee80211d = true;
+    #       };
+    #     };
+    #   };
+    # };
+
   # # Define host names to make dnsmasq resolve them, e.g. http://router.home
   # networking.extraHosts =
   #   lib.concatStringsSep "\n" (lib.mapAttrsToList formatHostName cfg.hosts);
@@ -263,14 +301,14 @@ in {
   };
 
   # Testing Invidious
-  services.invidious.enable = true;
+  # services.invidious.enable = false;
   # services.invidious.settings = {
   #   default_user_preferences = {
   #     quality = "dash";
   #     quality_dash = "auto";
   #   };
   # };
-  services.invidious.sig-helper.enable = true;
+  # services.invidious.sig-helper.enable = false;
 
   # K3s - https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/networking/cluster/k3s/docs/USAGE.md
   # When changing any of the options, reset the cluster: https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/networking/cluster/k3s/docs/CLUSTER_UPKEEP.md
