@@ -337,7 +337,8 @@ in {
     oci-containers.containers = {
       # Ollama
       ollama = {
-        image = "ollama/ollama:rocm";
+        # image = "ollama/ollama:rocm";
+        image = "ollama/ollama:0.12.9-rocm";
         ports = [ "11434:11434" ];
         devices = [ "/dev/dri:/dev/dri" "/dev/kfd:/dev/kfd" ];
         volumes = [ "/home/snowflake/.ollama:/root/.ollama" ];
