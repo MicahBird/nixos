@@ -45,6 +45,9 @@ in {
     /etc/nixos/hardware-configuration.nix
   ];
 
+  # # RADIO SDR!!!!
+  # boot.blacklistedKernelModules = [ "dvb_usb_rtl28xxu" ];
+
   nixpkgs.config.allowUnfree = true;
 
   networking.hostName = "dormlab"; # Define your hostname.
@@ -144,10 +147,31 @@ in {
     nvtopPackages.amd
     distrobox
     jetbrains.clion
+    ffmpeg
+    mpv
+    exiftool
     # Gaming
     steam-rom-manager
     # Emulators
     ryubing
+    # pydev
+    python3
+    # pypy3
+    # parallel-full
+    # C++ Dev
+    # gcc15
+    # cmake
+    # llvm
+    # gnumake
+    # bison
+    # flex
+    # fontforge
+    # makeWrapper
+    # pkg-config
+    # libiconv
+    # autoconf
+    # automake
+    # libtool # freetype calls glibtoolize
   ];
 
   # Router
@@ -433,6 +457,9 @@ in {
 
   # DNS - TODO: Blocking not working, no clue why
   networking.nameservers = [ "138.67.1.2" "138.67.1.3" ]; # Testing
+  # Thanks to this GitHub issue! https://github.com/AtaraxiaSjel/nixos-config/issues/3#issuecomment-1937201021
+  networking.resolvconf.enable = true;
+  networking.resolvconf.useLocalResolver = true;
   # networking.nameservers = [ "9.9.9.9" ]; # Testing
   services.blocky = {
     enable = true;
