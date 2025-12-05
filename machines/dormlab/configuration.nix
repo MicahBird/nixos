@@ -325,14 +325,14 @@ in {
   };
 
   # Testing Invidious
-  # services.invidious.enable = false;
+  services.invidious.enable = false;
   # services.invidious.settings = {
   #   default_user_preferences = {
   #     quality = "dash";
   #     quality_dash = "auto";
   #   };
   # };
-  # services.invidious.sig-helper.enable = false;
+  services.invidious.sig-helper.enable = false;
 
   # K3s - https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/networking/cluster/k3s/docs/USAGE.md
   # When changing any of the options, reset the cluster: https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/networking/cluster/k3s/docs/CLUSTER_UPKEEP.md
@@ -362,7 +362,7 @@ in {
       # Ollama
       ollama = {
         # image = "ollama/ollama:rocm";
-        image = "ollama/ollama:0.12.9-rocm";
+        image = "ollama/ollama:0.13.1-rocm";
         ports = [ "11434:11434" ];
         devices = [ "/dev/dri:/dev/dri" "/dev/kfd:/dev/kfd" ];
         volumes = [ "/home/snowflake/.ollama:/root/.ollama" ];
