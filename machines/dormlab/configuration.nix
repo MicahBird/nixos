@@ -172,6 +172,9 @@ in {
     # autoconf
     # automake
     # libtool # freetype calls glibtoolize
+    # LSPs
+    nil
+    gcc
   ];
 
   # Router
@@ -189,7 +192,8 @@ in {
 
   networking.firewall = {
     enable = true;
-    trustedInterfaces = [ "br0" "${lan}" "tailscale0" "wlp5s0" ];
+    trustedInterfaces = [ "br0" "wlp5s0" ];
+
     # Flush config on reload
     extraStopCommands = ''
       iptables -F
@@ -223,7 +227,6 @@ in {
         "${lan}"
         # "wlp5s0"
         # Uncomment the above line to use the Wifi interface with hostapd
-        
       ];
     };
   };
@@ -321,18 +324,19 @@ in {
       "--advertise-exit-node"
       "--advertise-routes=172.16.0.0/24"
       "--accept-dns=false"
+      "--accept-routes=true"
     ];
   };
 
   # Testing Invidious
-  services.invidious.enable = false;
+  # services.invidious.enable = true;
   # services.invidious.settings = {
   #   default_user_preferences = {
   #     quality = "dash";
   #     quality_dash = "auto";
   #   };
   # };
-  services.invidious.sig-helper.enable = false;
+  # services.invidious.sig-helper.enable = true;
 
   # K3s - https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/networking/cluster/k3s/docs/USAGE.md
   # When changing any of the options, reset the cluster: https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/networking/cluster/k3s/docs/CLUSTER_UPKEEP.md
@@ -362,7 +366,7 @@ in {
       # Ollama
       ollama = {
         # image = "ollama/ollama:rocm";
-        image = "ollama/ollama:0.13.1-rocm";
+        image = "ollama/ollama:0.14.3-rocm";
         ports = [ "11434:11434" ];
         devices = [ "/dev/dri:/dev/dri" "/dev/kfd:/dev/kfd" ];
         volumes = [ "/home/snowflake/.ollama:/root/.ollama" ];
@@ -456,11 +460,11 @@ in {
   };
 
   # DNS - TODO: Blocking not working, no clue why
-  networking.nameservers = [ "138.67.1.2" "138.67.1.3" ]; # Testing
+  networking.nameservers = [ "138.67.1.2" "138.67.1.3" ];
+  # networking.nameservers = [ "9.9.9.9" ]; # Testing
   # Thanks to this GitHub issue! https://github.com/AtaraxiaSjel/nixos-config/issues/3#issuecomment-1937201021
   networking.resolvconf.enable = true;
   networking.resolvconf.useLocalResolver = true;
-  # networking.nameservers = [ "9.9.9.9" ]; # Testing
   services.blocky = {
     enable = true;
     settings = {
